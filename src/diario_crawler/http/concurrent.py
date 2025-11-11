@@ -1,4 +1,4 @@
-"""Cliente HTTP para requisições concorrentes com retry mechanism."""
+"""Cliente HTTP para requisições concorrentes com limitação via asyncio.Semaphore."""
 
 import asyncio
 import logging
@@ -11,7 +11,12 @@ logger = logging.getLogger(__name__)
 
 
 class ConcurrentHttpClient:
-    """Cliente HTTP para requisições concorrentes com limitação e retry."""
+    """
+    Cliente HTTP para requisições concorrentes com limitação via asyncio.Semaphore.
+    
+    O retry é gerenciado pelo HttpClient base usando tenacity.
+    Esta classe apenas gerencia a concorrência com semáforo.
+    """
 
     def __init__(
         self,
@@ -21,43 +26,10 @@ class ConcurrentHttpClient:
         """
         Args:
             base_client: Cliente HTTP base (usará o padrão se None)
-            max_concurrent: Número máximo de requisições concorrentes
+            max_concurrent: Número máximo de requisições concorrentes (controlado por asyncio.Semaphore)
         """
         self.client = base_client or HttpClient()
         self.semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def fetch_with_retry(
-        self,
-        url: str,
-        client: httpx.AsyncClient,
-        max_retries: int = 3,
-        retry_delay: float = 1.0,
-    ) -> httpx.Response | None:
-        """
-        Realiza requisição com mecanismo de retry.
-
-        Args:
-            url: URL alvo
-            client: Cliente httpx compartilhado
-            max_retries: Número máximo de tentativas
-            retry_delay: Delay entre tentativas (segundos)
-
-        Returns:
-            Response HTTP ou None após todas as tentativas
-        """
-        for attempt in range(max_retries):
-            response = await self.client.fetch(url, client)
-
-            if response is not None:
-                return response
-
-            if attempt < max_retries - 1:
-                logger.info(f"Tentativa {attempt + 1} falhou, retry em {retry_delay}s")
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
-
-        logger.error(f"Todas as {max_retries} tentativas falharam para {url}")
-        return None
 
     async def fetch_all(
         self,
@@ -66,20 +38,26 @@ class ConcurrentHttpClient:
         max_retries: int = 3,
     ) -> list[httpx.Response | None]:
         """
-        Realiza múltiplas requisições concorrentes com limitação.
+        Realiza múltiplas requisições concorrentes com limitação via asyncio.Semaphore.
+        
+        O retry é gerenciado pelo HttpClient base usando tenacity.
 
         Args:
             urls: Lista de URLs para requisitar
             client: Cliente httpx compartilhado
-            max_retries: Número máximo de retries por URL
+            max_retries: Número máximo de retries por URL (passado para HttpClient.fetch)
 
         Returns:
             Lista de respostas (ou None para falhas) na mesma ordem das URLs
         """
 
         async def fetch_with_semaphore(url: str) -> httpx.Response | None:
+            """
+            Realiza uma requisição respeitando o limite de concorrência do semáforo.
+            O retry é gerenciado internamente pelo HttpClient via tenacity.
+            """
             async with self.semaphore:
-                return await self.fetch_with_retry(url, client, max_retries)
+                return await self.client.fetch(url, client, max_retries=max_retries)
 
         tasks = [fetch_with_semaphore(url) for url in urls]
         results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -93,7 +71,6 @@ class ConcurrentHttpClient:
             else:
                 processed_results.append(result)
 
-        logger.info(
-            f"Concluídas {len([r for r in processed_results if r])}/{len(urls)} requisições"
-        )
+        successful = len([r for r in processed_results if r])
+        logger.info(f"Concluídas {successful}/{len(urls)} requisições com sucesso")
         return processed_results

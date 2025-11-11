@@ -1,9 +1,16 @@
 """Cliente HTTP básico para requisições."""
 
-import asyncio
 import logging
 
 import httpx
+from tenacity import (
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
+    before_sleep_log,
+    after_log,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -46,82 +53,110 @@ class HttpClient:
         self.headers = {**self.DEFAULT_HEADERS, **(headers or {})}
         self.timeout = timeout or self.DEFAULT_TIMEOUT
 
+    async def _fetch_internal(
+        self,
+        url: str,
+        client: httpx.AsyncClient,
+    ) -> httpx.Response:
+        """
+        Realiza uma requisição HTTP GET assíncrona (internal, raises exceptions).
+
+        Args:
+            url: URL alvo
+            client: Cliente httpx compartilhado
+
+        Returns:
+            Response HTTP
+
+        Raises:
+            httpx.HTTPStatusError: Em caso de erro de status HTTP
+            httpx.TimeoutException: Em caso de timeout
+            httpx.RequestError: Em caso de erro de requisição
+        """
+        response = await client.get(
+            url,
+            headers=self.headers,
+            timeout=self.timeout,
+            follow_redirects=True,
+        )
+
+        # Verifica status code (raise_for_status levanta exceção em 4xx/5xx)
+        response.raise_for_status()
+
+        logger.debug(
+            f"Requisição bem-sucedida para {url} - Status: {response.status_code}"
+        )
+        return response
+
+    def _should_retry_status_error(self, status_code: int) -> bool:
+        """Determina se um erro de status HTTP deve ser retentado."""
+        # Retenta em 5xx (erros do servidor)
+        if 500 <= status_code < 600:
+            return True
+        # Retenta em alguns 4xx específicos
+        if status_code in (408, 429):  # Request Timeout, Too Many Requests
+            return True
+        # Não retenta em outros 4xx (erros do cliente)
+        return False
+
     async def fetch(
         self,
         url: str,
         client: httpx.AsyncClient,
-    ) -> httpx.Response | None:
-        """
-        Realiza uma requisição HTTP GET assíncrona.
-
-        Args:
-            url: URL alvo
-            client: Cliente httpx compartilhado
-
-        Returns:
-            Response HTTP ou None em caso de erro
-        """
-        try:
-            response = await client.get(
-                url,
-                headers=self.headers,
-                timeout=self.timeout,
-                follow_redirects=True,
-            )
-
-            # Verifica status code
-            response.raise_for_status()
-
-            logger.debug(
-                f"Requisição bem-sucedida para {url} - Status: {response.status_code}"
-            )
-            return response
-
-        except httpx.HTTPStatusError as e:
-            logger.warning(f"Erro HTTP {e.response.status_code} em {url}: {e}")
-            return None
-
-        except httpx.TimeoutException as e:
-            logger.error(f"Timeout em {url}: {e}")
-            return None
-
-        except httpx.RequestError as e:
-            logger.error(f"Erro de requisição em {url}: {e}")
-            return None
-
-        except Exception as e:
-            logger.error(f"Erro inesperado em {url}: {e}")
-            return None
-
-    async def fetch_with_retry(
-        self,
-        url: str,
-        client: httpx.AsyncClient,
         max_retries: int = 3,
-        retry_delay: float = 1.0,
     ) -> httpx.Response | None:
         """
-        Realiza requisição com mecanismo de retry.
+        Realiza uma requisição HTTP GET assíncrona com retry automático via tenacity.
 
         Args:
             url: URL alvo
             client: Cliente httpx compartilhado
-            max_retries: Número máximo de tentativas
-            retry_delay: Delay entre tentativas (segundos)
+            max_retries: Número máximo de tentativas (padrão: 3)
 
         Returns:
-            Response HTTP ou None após todas as tentativas
+            Response HTTP ou None em caso de erro não recuperável
         """
-        for attempt in range(max_retries):
-            response = await self.fetch(url, client)
+        # Cria uma função wrapper com retry específica para esta URL
+        @retry(
+            retry=retry_if_exception_type(
+                (httpx.TimeoutException, httpx.RequestError, httpx.HTTPStatusError)
+            ),
+            stop=stop_after_attempt(max_retries),
+            wait=wait_exponential(multiplier=1, min=1, max=10),
+            before_sleep=before_sleep_log(logger, logging.WARNING),
+            after=after_log(logger, logging.ERROR),
+            reraise=False,
+        )
+        async def _fetch_with_retry() -> httpx.Response | None:
+            try:
+                return await self._fetch_internal(url, client)
+            except httpx.HTTPStatusError as e:
+                status_code = e.response.status_code
+                if not self._should_retry_status_error(status_code):
+                    # Erro não retentável, retorna None (não será retentado)
+                    logger.warning(
+                        f"Erro HTTP {status_code} em {url}: {e} (não retentável)"
+                    )
+                    return None
+                # Erro retentável, propaga exceção para tenacity retentar
+                logger.warning(f"Erro HTTP {status_code} em {url}: {e} (retentando)")
+                raise
 
-            if response is not None:
-                return response
+            except (httpx.TimeoutException, httpx.RequestError) as e:
+                logger.warning(f"Erro de requisição em {url}: {e} (retentando)")
+                raise
 
-            if attempt < max_retries - 1:
-                logger.info(f"Tentativa {attempt + 1} falhou, retry em {retry_delay}s")
-                await asyncio.sleep(retry_delay)
-                retry_delay *= 2
+            except Exception as e:
+                # Erros inesperados não são retentados
+                logger.error(f"Erro inesperado em {url}: {e}")
+                return None
 
-        logger.error(f"Todas as {max_retries} tentativas falharam para {url}")
-        return None
+        try:
+            result = await _fetch_with_retry()
+            if result is None:
+                logger.error(f"Falha ao obter resposta para {url} após {max_retries} tentativas")
+            return result
+        except Exception as e:
+            # Captura qualquer exceção não tratada após todos os retries
+            logger.error(f"Erro crítico após retries em {url}: {e}")
+            return None
