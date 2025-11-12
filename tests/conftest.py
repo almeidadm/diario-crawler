@@ -1,5 +1,6 @@
 """Pytest configuration and fixtures for crawler tests."""
 
+from datetime import date
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -45,15 +46,16 @@ def mock_storage() -> BaseStorage:
     return storage
 
 
-@pytest.fixture
-def test_config() -> CrawlerConfig:
-    """Test configuration with small date range."""
-    from datetime import date, timedelta
-
-    # Use a small date range for testing (2-3 days)
-    end_date = date(2024, 1, 5)
-    start_date = end_date - timedelta(days=2)
-
+@pytest.fixture(
+    params=[
+        (date(2024, 1, 3), date(2024, 1, 5)),
+#        (date(2023, 12, 29), date(2024, 1, 2)),
+#        (date(2024, 2, 28), date(2024, 3, 1)),
+    ]
+)
+def test_config(request) -> CrawlerConfig:
+    """Configuração parametrizada do Crawler para múltiplos intervalos."""
+    start_date, end_date = request.param
     return CrawlerConfig(
         start_date=start_date,
         end_date=end_date,
@@ -61,9 +63,7 @@ def test_config() -> CrawlerConfig:
         max_concurrent=3,
     )
 
-
 @pytest.fixture
 def temp_data_dir(tmp_path: Path) -> Path:
     """Temporary directory for test data."""
     return tmp_path / "test_data"
-
