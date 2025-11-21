@@ -28,6 +28,7 @@ tenacity = ">=9.0.0,<10.0.0"
 pydantic-settings = ">=2.6.1,<3.0.0"
 typer = {extras = ["all"], version = ">=0.15.1,<1.0.0"}
 spacy = "^3.8.8"
+unidecode = "^1.4.0"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = ">=7.1.0,<8.0.0"
@@ -81,3 +82,6 @@ markers = [
     "asyncio: marks tests as async",
     "slow: marks tests as slow",
 ]
+
+[tool.poetry.scripts]
+cli = 'diario_crawler.cli.run_crawler:main'
