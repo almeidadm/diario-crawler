@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "diario-sjc-crawler"
+name = "diario-crawler"
 version = "0.1.0"
 description = ""
 authors = ["almeidadm <almeidadm@outlook.com>"]
