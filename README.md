@@ -17,7 +17,7 @@ Ele foi projetado para uso em pipelines de ETL, RAG e análise documental em lar
 
 ---
 
-A aplicação fornece:
+## A aplicação fornece:
 
 Coleta paralela de edições por período ou janela móvel.
 
