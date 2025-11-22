@@ -1,216 +1,146 @@
-# Diário Oficial Crawler - São José dos Campos
+# 📘 Diário SJC Crawler
 
 ![Python Version](https://img.shields.io/badge/python-3.12+-blue.svg)
 ![Packaging: Poetry](https://img.shields.io/badge/packaging-poetry-cyan.svg)
 ![Async/Await](https://img.shields.io/badge/async-await-green.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-lightgrey.svg)
 
-Um **crawler assíncrono e eficiente** para capturar edições e artigos do Diário Oficial de São José dos Campos.  
-Projetado para **processamento em larga escala**, com **armazenamento otimizado em Parquet/DuckDB** e **análises integradas com Polars e Pandas**.
+
+Diário SJC Crawler é um crawler assíncrono multi-município para coleta estruturada de Diários Oficiais no Brasil.
+A aplicação é baseada no formato de disponibilização dos Diários Oficiais fornecido pela IONews (https://ionews.com.br/), cuja publicação segue um modelo hierárquico em HTML, permitindo extração sistemática de seções, categorias e conteúdo textual.
+
+Ele foi projetado para uso em pipelines de ETL, RAG e análise documental em larga escala.
+
+**Exemplo:**
+
+- São José dos Campos: https://diariodomunicipio.sjc.sp.gov.br/
 
 ---
 
-## 🚀 Características Principais
+A aplicação fornece:
 
-- **Crawler Assíncrono** — uso de `httpx[http2]` e `asyncio` para alta concorrência.  
-- **Pipeline Trifásico** — Metadados → Estrutura HTML → Conteúdo completo.  
-- **Armazenamento Eficiente** — suporte a `Parquet` e `DuckDB` com particionamento temporal.  
-- **Resiliência** — controle de *retries* e logs enriquecidos via `rich`.  
-- **CLI Completo** — interface via `scripts/` e integração com `taskipy`.  
-- **Análises e Visualização** — integração com `matplotlib`, `seaborn`, `polars` e `pandas`.  
-- **Gerenciamento com Poetry** — ambientes isolados e consistentes.  
+Coleta paralela de edições por período ou janela móvel.
 
----
+Armazenamento local ou em MinIO/S3 com particionamento.
 
-## 📁 Estrutura do Projeto
+Suporte opcional a DuckDB para consultas rápidas.
 
-```text
-rag-diario-sjc-crawler/
-├── pyproject.toml              # Configuração Poetry e dependências
-├── poetry.lock                 # Lock file
-├── src/diario_crawler/         # Código-fonte principal
-│   ├── core/                   # Orquestração principal
-│   ├── http/                   # Cliente HTTP
-│   ├── parsers/                # Parsing e extração
-│   ├── processors/             # Processamento e agregação
-│   ├── storage/                # Armazenamento (Parquet/DuckDB)
-│   ├── utils/                  # Funções auxiliares e logging
-│   └── models/                 # Estruturas de dados
-├── scripts/                    # Scripts executáveis (CLI)
-├── notebooks/                  # Notebooks para exploração e análise
-├── tests/                      # Testes unitários (TODO)
-├── data/                       # Dados locais (não versionados)
-└── README.md
+CLI robusto para orquestração de crawlers específicos por município.
+
+A interface oficial do projeto é fornecida via entrypoint Poetry:
+
+```bash
+cli  # mapeado para diario_crawler.cli.run_crawler:main
 ```
 
 ---
 
-## ⚡ Instalação
-
-### Pré-requisitos
-
-- Python **3.12+**
-- Poetry instalado globalmente
-
-### Passos
+## 🚀 Instalação
 
 ```bash
-# Clone o repositório
-git clone <repository-url>
+git clone https://github.com/almeidadm/diario-sjc-crawler
 cd rag-diario-sjc-crawler
-
-# Instale dependências
 poetry install
-
-# Ative o ambiente virtual
-poetry shell
-```
-
-Ou execute diretamente sem ativar o shell:
-
-```bash
-poetry run python scripts/run_crawler.py --days 7
 ```
 
 ---
 
-## 🎯 Uso Básico
+## 🧭 Uso Básico
 
-### Últimos 7 dias
+Liste os crawlers disponíveis:
 
 ```bash
-poetry run python scripts/run_crawler.py --days 7
+cli --list-crawlers
+```
+Execute para um município específico (últimos 7 dias):
+```bash
+cli --municipality sp_sao_jose_dos_campos --days 7
+```
+Baixe um período específico e salve no MinIO:
+```bash
+cli \
+  --municipality rj_rio_de_janeiro \
+  --start-date 2025-01-01 \
+  --end-date 2025-01-31 \
+  --storage minio
 ```
 
-### Período Específico
-
+Migrar dados locais para MinIO:
 ```bash
-poetry run python scripts/run_crawler.py --start-date 2025-01-01 --end-date 2025-01-31
-```
-
-### Logs Detalhados
-
-```bash
-poetry run python scripts/run_crawler.py --days 30 --log-level DEBUG --log-file logs/crawler.log
+cli --municipality sp_sao_jose_dos_campos --migrate-to-minio
 ```
 
 ---
 
-## 🔧 Uso Avançado
+## ⚙️ Principais Parâmetros
 
-### Processamento em Lotes
-
-```bash
-poetry run python scripts/batch_process.py   --start-date 2025-01-01   --end-date 2025-12-31   --batch-days 15   --max-retries 5
-```
-
-### Desenvolvimento
+Município
 
 ```bash
-# Dependências de desenvolvimento
-poetry install --with dev
-
-# Lint e formatação
-task lint
-task format
+--municipality {sp_sao_jose_dos_campos,rj_rio_de_janeiro,es_associacao_municipios,ro_jaru,ms_corumba}
 ```
 
----
+Janela temporal
 
-## 📦 Dependências Principais
+- --start-date YYYY-MM-DD
 
-### Runtime
+- --end-date YYYY-MM-DD
 
-| Pacote         | Descrição                                   |
-| -------------- | ------------------------------------------- |
-| `httpx[http2]` | Cliente HTTP assíncrono de alta performance |
-| `selectolax`   | Parser HTML rápido baseado em lexbor        |
-| `rich`         | Saída de logs e console colorido            |
-| `pandas`       | Manipulação tabular                         |
-| `pyarrow`      | Suporte ao formato Parquet                  |
-| `duckdb`       | Engine analítica em memória e on-disk       |
-| `polars`       | DataFrame de alto desempenho                |
+- --days N (padrão: 7)
 
-### Desenvolvimento (`--with dev`)
+Concorrência e desempenho
 
-| Pacote                  | Função                                  |
-| ----------------------- | --------------------------------------- |
-| `black`                 | Formatação de código                    |
-| `isort`                 | Organização de imports                  |
-| `flake8`                | Linter                                  |
-| `taskipy`               | Definição de tarefas CLI                |
-| `matplotlib`, `seaborn` | Visualização                            |
-| `tqdm[notebook]`        | Barra de progresso em terminal/notebook |
-| `ipykernel`, `notebook` | Ambiente interativo Jupyter             |
+- --batch-size (padrão: 30)
 
----
+- --max-concurrent (padrão: 10)
 
-## 🧩 Tarefas Taskipy
+Armazenamento
 
-```toml
-[tool.taskipy.tasks]
-lint = "flake8 src"
-format = "isort src && black src"
-check = "task format && task lint"
-```
+Local, MinIO ou S3 (--storage)
 
-Uso:
+- --output-dir para storage local
 
+- --partition-by {day,month,year}
+
+MinIO/S3
+
+Inclui endpoint, bucket, credenciais e prefixos configuráveis.
+
+DuckDB
+
+- --enable-duckdb
+
+- --duckdb-path (arquivo ou in-memory)
+
+## 📂 Estrutura e Dependências
+
+O projeto é organizado como um pacote Poetry:
+
+Pacote principal: diario_crawler/ (definido em [tool.poetry])
+
+CLI: diario_crawler.cli.run_crawler
+
+Dependências principais:
+
+httpx[http2] para requisições assíncronas
+
+selectolax para parsing HTML eficiente
+
+pandas, polars, pyarrow, duckdb para processamento tabular
+
+typer para a interface CLI
+
+vcrpy para testes reprodutíveis
+
+Ambiente de desenvolvimento inclui: pytest, flake8, black, isort, matplotlib, seaborn, entre outros.
+
+## 🧪 Testes
+
+Execute toda a suíte:
 ```bash
-task lint    # Verifica código
-task format  # Formata código
-task check   # Executa lint e formatação
+task test
 ```
-
----
-
-## 🏗️ Exemplo Programático
-
-```python
-from datetime import date
-import asyncio
-from diario_crawler.core import GazetteCrawler, CrawlerConfig
-from diario_crawler.storage import ParquetStorage
-
-async def main():
-    config = CrawlerConfig(
-        start_date=date(2025, 11, 1),
-        end_date=date(2025, 11, 5)
-    )
-    storage = ParquetStorage()
-    crawler = GazetteCrawler(config=config, storage=storage)
-
-    editions = await crawler.run_and_save()
-    print(f"Processadas {len(editions)} edições")
-
-asyncio.run(main())
-```
-
----
-
-## 💾 Estrutura de Armazenamento
-
-```text
-data/
-├── raw/
-│   ├── gazettes/        # Metadados das edições
-│   ├── articles/        # Artigos particionados por data
-│   └── relationships/   # Relações edição-artigo
-└── checkpoints/         # Checkpoints de batch
-```
-
-### Leitura de Dados
-
-```python
-from diario_crawler.storage import ParquetStorage
-
-storage = ParquetStorage(base_path="data/raw")
-edition = storage.load_edition_with_articles("2555")
-```
-
----
 
 ## 📄 Licença
-
-Este projeto está licenciado sob a **MIT License**.  
-Consulte o arquivo `LICENSE` para mais detalhes.
+Este projeto está licenciado sob a MIT License.
+Consulte o arquivo LICENSE para mais detalhes.
