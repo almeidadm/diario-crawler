@@ -5,8 +5,9 @@ from typing import Any
 
 import duckdb
 import pyarrow as pa
+from diario_contract.article.content import ContentType
+from diario_contract.gazette.edition import GazetteEdition
 
-from diario_crawler.models import ContentType, GazetteEdition
 from diario_crawler.storage.base import ARTICLES_SCHEMA, EDITIONS_SCHEMA, StorageBackend
 from diario_crawler.storage.local import LocalBackend
 from diario_crawler.utils import get_logger

@@ -2,9 +2,8 @@
 
 import logging
 
+from diario_contract.article.metadata import ArticleMetadata
 from selectolax.lexbor import LexborHTMLParser, LexborNode
-
-from ..models import ArticleMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +62,7 @@ class HtmlStructureParser:
 
                     except Exception as e:
                         logger.error(f"Erro ao parsear link de artigo: {e}")
+                        raise e
 
         # Processa todos os nós de primeiro nível
         for li in root_ul.css("li"):

@@ -4,10 +4,12 @@ import asyncio
 from typing import AsyncIterator
 
 import httpx
+from diario_contract.article.metadata import ArticleMetadata
+from diario_contract.gazette.edition import GazetteEdition
+from diario_contract.gazette.metadata import GazetteMetadata
 
 from diario_crawler.core.clients import ConcurrentHttpClient, HttpClient
 from diario_crawler.crawler_configs.base import BaseCrawlerConfig
-from diario_crawler.models import ArticleMetadata, GazetteEdition, GazetteMetadata
 from diario_crawler.parsers import ContentParser, HtmlStructureParser, MetadataParser
 from diario_crawler.processors import DataProcessor
 from diario_crawler.storage import ParquetStorage

@@ -3,9 +3,10 @@
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
+from diario_contract.gazette.edition import GazetteEdition
+from diario_contract.article.metadata import ArticleMetadata
 
 from diario_crawler.core.crawler import GazetteCrawler
-from diario_crawler.models import ArticleMetadata, GazetteEdition
 
 pytestmark = pytest.mark.order(3)
 

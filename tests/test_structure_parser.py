@@ -1,9 +1,9 @@
 """Tests for HtmlStructureParser using recorded HTML via VCR."""
 
 import pytest
+from diario_contract.article.metadata import ArticleMetadata
 
 from diario_crawler.core.crawler import GazetteCrawler
-from diario_crawler.models import ArticleMetadata
 from diario_crawler.parsers.structure import HtmlStructureParser
 
 pytestmark = pytest.mark.order(2)
@@ -35,7 +35,7 @@ async def test_structure_parser_basic(vcr_cassette, test_config, mock_storage):
     assert html_results, "Nenhum HTML retornado — verifique o cassette"
 
     # === Fase 3: Parse das estruturas HTML ===
-    articles = []
+    articles: list[ArticleMetadata] = []
     for html_data in html_results:
         edition_id = html_data["edition_id"]
         html = html_data["html"]
@@ -45,7 +45,7 @@ async def test_structure_parser_basic(vcr_cassette, test_config, mock_storage):
 
     # === Asserções ===
     assert isinstance(articles, list)
-    assert all(isinstance(a, ArticleMetadata) for a in articles)
+    assert all([isinstance(a, ArticleMetadata) for a in articles])
     assert len(articles) > 0, "Nenhum artigo foi extraído — seletores podem ter mudado"
     assert any(a.title for a in articles), "Nenhum título foi extraído"
     assert any(a.identifier for a in articles), "Nenhum identificador foi extraído"
