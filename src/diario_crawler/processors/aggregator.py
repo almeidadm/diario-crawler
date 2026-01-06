@@ -2,8 +2,10 @@
 
 from typing import Any
 
-from ..models import Article, ArticleMetadata, GazetteEdition, GazetteMetadata
-from ..utils import get_logger
+from diario_contract.article.article import Article, ArticleMetadata
+from diario_contract.gazette.edition import GazetteEdition, GazetteMetadata
+
+from diario_crawler.utils import get_logger
 
 logger = get_logger(__name__)
 

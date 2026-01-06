@@ -4,8 +4,7 @@ import json
 import logging
 
 import httpx
-
-from ..models import GazetteMetadata
+from diario_contract.gazette.metadata import GazetteMetadata
 
 logger = logging.getLogger(__name__)
 

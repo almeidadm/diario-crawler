@@ -3,8 +3,7 @@
 import logging
 
 import httpx
-
-from ..models import ArticleContent, ContentType
+from diario_contract.article.content import ArticleContent, ContentType
 
 logger = logging.getLogger(__name__)
 
