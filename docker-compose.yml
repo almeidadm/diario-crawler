@@ -1,0 +1,16 @@
+services:
+  ralph-workspace:
+    image: node:20-slim  # Use a imagem que bate com a linguagem do seu projeto (ex: python:3.11, golang:latest)
+    container_name: ralph-dev-agent
+    volumes:
+      - .:/app  # Mapeia seu repositório atual para dentro do container
+      - ~/.gitconfig:/root/.gitconfig:ro # (Opcional) Passa sua identidade git para o agente
+    working_dir: /app
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # Evita que ferramentas interativas travem o agente
+      - CI=true 
+    # Segurança: Impede que o agente ganhe privilégios de root no seu host
+    security_opt:
+      - no-new-privileges:true
+    command: tail -f /dev/null # Mantém o container rodando esperando comandos

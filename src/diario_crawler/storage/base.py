@@ -18,18 +18,18 @@ logger = get_logger(__name__)
 PARQUET_COMPRESSION = "zstd"
 PARQUET_COMPRESSION_LEVEL = 9
 
-# Schema explícito para melhor performance e compatibilidade
+# Schemas Parquet padronizados
 EDITIONS_SCHEMA = pa.schema(
     [
         ("municipality", pa.string()),
         ("edition_id", pa.string()),
         ("publication_date", pa.date32()),
-        ("edition_number", pa.int32()),
+        ("edition_number", pa.int64()),
         ("supplement", pa.bool_()),
-        ("edition_type_id", pa.int32()),
+        ("edition_type_id", pa.int64()),
         ("edition_type_name", pa.string()),
         ("pdf_url", pa.string()),
-        ("total_articles", pa.int32()),
+        ("total_articles", pa.int64()),
         ("processed_at", pa.timestamp("us")),
         ("edition_hash", pa.string()),
         ("batch_id", pa.string()),
@@ -47,7 +47,7 @@ ARTICLES_SCHEMA = pa.schema(
         ("edition_hash", pa.string()),
         ("publication_date", pa.date32()),
         ("title", pa.string()),
-        ("hierarchy_path", pa.string()),  # JSON serializado
+        ("hierarchy_path", pa.string()),
         ("identifier", pa.string()),
         ("protocol", pa.string()),
         ("depth", pa.int32()),

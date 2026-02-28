@@ -1,6 +1,6 @@
 [project]
 name = "diario-crawler"
-version = "0.1.1"
+version = "1.0.0"
 description = ""
 readme = "README.md"
 authors = [
@@ -88,4 +88,4 @@ markers = [
 ]
 
 [tool.uv.sources]
-diario-contract = { git = "ssh://git@github.com/almeidadm/diario-contract.git", rev = "v1.0.3" }
+diario-contract = { git = "ssh://git@github.com/almeidadm/diario-contract.git", rev = "v1.1.2" }
