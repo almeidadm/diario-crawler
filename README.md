@@ -21,9 +21,9 @@ Ele foi projetado para uso em pipelines de ETL, RAG e análise documental em lar
 
 Coleta paralela de edições por período ou janela móvel.
 
-Armazenamento local ou em MinIO/S3 com particionamento.
+Armazenamento local em layout Medallion (bronze/silver/gold) via `diario_utils.storage`.
 
-Suporte opcional a DuckDB para consultas rápidas.
+Suporte a DuckDB para consultas rápidas do catálogo local.
 
 CLI robusto para orquestração de crawlers específicos por município.
 
@@ -56,18 +56,13 @@ Execute para um município específico (últimos 7 dias):
 ```bash
 cli --municipality sp_sao_jose_dos_campos --days 7
 ```
-Baixe um período específico e salve no MinIO:
+Baixe um período específico e salve no diretório local:
 ```bash
 cli \
   --municipality rj_rio_de_janeiro \
   --start-date 2025-01-01 \
   --end-date 2025-01-31 \
-  --storage minio
-```
-
-Migrar dados locais para MinIO:
-```bash
-cli --municipality sp_sao_jose_dos_campos --migrate-to-minio
+  --output-dir data/diarios
 ```
 
 ---
@@ -94,22 +89,9 @@ Concorrência e desempenho
 
 - --max-concurrent (padrão: 10)
 
-Armazenamento
+Armazenamento (local Medallion)
 
-Local, MinIO ou S3 (--storage)
-
-- --output-dir para storage local
-
-- --partition-by {day,month,year}
-
-MinIO/S3
-
-Inclui endpoint, bucket, credenciais e prefixos configuráveis.
-
-DuckDB
-
-- --enable-duckdb
-
+- --output-dir para base_path (padrão: data)
 - --duckdb-path (arquivo ou in-memory)
 
 ## 📂 Estrutura e Dependências
@@ -131,6 +113,8 @@ pandas, polars, pyarrow, duckdb para processamento tabular
 typer para a interface CLI
 
 vcrpy para testes reprodutíveis
+
+diario-utils (storage + logger) para layout medallion e logging estruturado
 
 Ambiente de desenvolvimento inclui: pytest, flake8, black, isort, matplotlib, seaborn, entre outros.
 

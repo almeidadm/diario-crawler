@@ -1,102 +1,49 @@
-"""Configuração centralizada de logging."""
+"""Logging helper that delegates to diario_utils.logger when available."""
+
+from __future__ import annotations
 
 import logging
-import logging.config
-from pathlib import Path
 from typing import Any
 
+try:
+    from diario_utils import logger as du_logger
+except Exception:  # pragma: no cover - fallback for missing dependency
+    du_logger = None  # type: ignore
 
-def setup_logging(
-    level: str = "INFO",
-    log_file: str | Path | None = None,
-    format: str | None = None,
-) -> None:
-    """
-    Configura sistema de logging para a aplicação.
 
-    Args:
-        level: Nível de log (DEBUG, INFO, WARNING, ERROR, CRITICAL)
-        log_file: Arquivo para salvar logs (None para apenas console)
-        format: Formato personalizado dos logs
+def setup_logging(level: str = "INFO", log_file: str | None = None) -> None:
     """
-    if format is None:
-        format = (
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s "
-            "[%(filename)s:%(lineno)d]"
+    Configure application logging.
+
+    Prefers diario_utils.logger defaults (structlog-friendly). Falls back to
+    basic logging when the upstream helper is unavailable.
+    """
+    if du_logger:
+        configure = getattr(du_logger, "configure", None) or getattr(
+            du_logger, "configure_logging", None
         )
+        if configure:
+            try:
+                configure(level=level, log_file=log_file, service_name="diario-crawler")
+                return
+            except Exception:
+                # If diario_utils is present but configuration fails, drop to fallback.
+                pass
 
-    config: dict[str, Any] = {
-        "version": 1,
-        "disable_existing_loggers": False,
-        "formatters": {
-            "standard": {
-                "format": format,
-                "datefmt": "%Y-%m-%d %H:%M:%S",
-            },
-        },
-        "handlers": {
-            "console": {
-                "()": "rich.logging.RichHandler",
-                "level": level,
-                "markup": True,
-                "rich_tracebacks": True,
-                "show_time": True,
-                "show_path": True,
-                "log_time_format": "%H:%M:%S",
-            },
-            "file": {
-                "class": "logging.FileHandler",
-                "level": level,
-                "formatter": "standard",
-                "filename": "app.log",
-                "mode": "a",
-                "encoding": "utf-8",
-            },
-        },
-        "loggers": {
-            "diario_crawler": {
-                "handlers": ["file"],
-                "level": level,
-                "propagate": False,
-            },
-        },
-        "root": {
-            "handlers": ["file"],
-            "level": level,
-        },
-    }
-
-    if log_file:
-        log_path = Path(log_file)
-        log_path.parent.mkdir(parents=True, exist_ok=True)
-
-        config["handlers"]["file"] = {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": level,
-            "formatter": "standard",
-            "filename": str(log_path),
-            "maxBytes": 10_485_760,  # 10MB
-            "backupCount": 5,
-            "encoding": "utf-8",
-        }
-
-        config["loggers"]["diario_crawler"]["handlers"].append("file")
-        config["root"]["handlers"].append("file")
-
-    logging.config.dictConfig(config)
-
-    logger = logging.getLogger("diario_crawler")
-    logger.info(f"Logging configurado (level: {level})")
+    logging.basicConfig(
+        level=getattr(logging, level.upper(), logging.INFO),
+        format="%(asctime)s %(levelname)s %(name)s %(message)s",
+    )
 
 
-def get_logger(name: str) -> logging.Logger:
-    """
-    Retorna logger com nome qualificado.
-
-    Args:
-        name: Nome do logger (geralmente __name__)
-
-    Returns:
-        Instância de Logger configurada
-    """
+def get_logger(name: str) -> Any:
+    """Return a structlog/logger instance."""
+    if du_logger and hasattr(du_logger, "get_logger"):
+        try:
+            return du_logger.get_logger(name)
+        except Exception:
+            pass
     return logging.getLogger(name)
+
+
+__all__ = ["setup_logging", "get_logger"]

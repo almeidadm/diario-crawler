@@ -7,12 +7,12 @@ import httpx
 from diario_contract.article.metadata import ArticleMetadata
 from diario_contract.gazette.edition import GazetteEdition
 from diario_contract.gazette.metadata import GazetteMetadata
+from diario_utils.storage import StorageClient
 
 from diario_crawler.core.clients import ConcurrentHttpClient, HttpClient
 from diario_crawler.crawler_configs.base import BaseCrawlerConfig
 from diario_crawler.parsers import ContentParser, HtmlStructureParser, MetadataParser
 from diario_crawler.processors import DataProcessor
-from diario_crawler.storage import ParquetStorage
 from diario_crawler.utils import get_logger, get_workdays
 
 logger = get_logger(__name__)
@@ -24,7 +24,7 @@ class GazetteCrawler:
     Processa dados em lotes para otimizar uso de memória.
     """
 
-    def __init__(self, config: BaseCrawlerConfig, storage: ParquetStorage):
+    def __init__(self, config: BaseCrawlerConfig, storage: StorageClient):
         """
         Args:
             config: Configuração do crawler (usa padrão se None)
@@ -290,7 +290,7 @@ class GazetteCrawler:
         n_articles = 0
 
         async for batch in self.run_batched():
-            self.storage.save_editions(batch, municipality=self.config.NAME)
+            self.storage.append_gazettes(batch, city_id=self.config.NAME)
             n_editions += len(batch)
             n_articles += sum([len(g.articles) for g in batch])
 

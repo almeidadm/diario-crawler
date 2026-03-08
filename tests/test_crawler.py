@@ -210,10 +210,10 @@ async def test_run(test_config, mock_storage):
         yield [fake_edition]
 
     crawler.run_batched = fake_batches
-    crawler.storage.save_editions = MagicMock()
+    crawler.storage.append_gazettes = MagicMock()
 
     n_editions, n_articles = await crawler.run()
 
     assert n_editions == 2
     assert n_articles == 4
-    crawler.storage.save_editions.assert_called()
+    crawler.storage.append_gazettes.assert_called()

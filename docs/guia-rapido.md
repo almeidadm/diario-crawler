@@ -47,8 +47,9 @@ cli --municipality rj_rio_de_janeiro --start-date 2025-01-01 --end-date 2025-01-
 
 ## Onde os dados ficam
 
-Por padrao, os arquivos ficam em `data/raw` com particoes por dia. Para mudar o destino, use `--output-dir`.
+O storage é local em layout Medallion:
 
-## Quando usar MinIO ou S3
+- bronze: `data/bronze/city_id=<id>/yyyymm=<AAAAMM>/`
+- silver/gold são opcionais e controlados por `diario_utils.storage`.
 
-Se quiser armazenar em MinIO ou S3, use `--storage minio` ou `--storage s3` e informe as variaveis de ambiente listadas em `docs/operacao.md`.
+Use `--output-dir` para trocar a base (`data` por padrão).

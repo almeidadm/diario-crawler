@@ -16,8 +16,6 @@ from diario_crawler.crawler_configs.ms_corumba import MsCorumba
 from diario_crawler.crawler_configs.rj_rio_de_janeiro import RjRioDeJaneiro
 from diario_crawler.crawler_configs.ro_jaru import RoJaru
 from diario_crawler.crawler_configs.sp_sao_jose_dos_campos import SpSaoJoseDosCampos
-from diario_crawler.storage.base import StorageBackend
-from diario_crawler.storage.local import LocalBackend
 
 vcr_dir = Path(__file__).parent / "fixtures" / "vcr_cassettes"
 vcr_dir.mkdir(parents=True, exist_ok=True)
@@ -45,10 +43,10 @@ def vcr_cassette(request):
 
 
 @pytest.fixture
-def mock_storage() -> StorageBackend:
+def mock_storage() -> MagicMock:
     """Mock storage that doesn't write to disk."""
-    storage = MagicMock(spec=LocalBackend("data/raw"))
-    storage.save_editions = MagicMock()
+    storage = MagicMock()
+    storage.append_gazettes = MagicMock()
     return storage
 
 
